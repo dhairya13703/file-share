@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-// const rateLimit = require('express-rate-limit');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const configRoutes = require('./routes/config');
 
@@ -16,11 +16,10 @@ app.use(cors({
   credentials: true
 }));
 
-// // Rate limiting
+// Rate limiting
 // const limiter = rateLimit({
 //   windowMs: 15 * 60 * 1000, // 15 minutes
 //   max: 100, // limit each IP to 100 requests per windowMs
-//   // Trust the Caddy proxy
 //   trustProxy: true
 // });
 // app.use(limiter);
@@ -29,7 +28,13 @@ app.use(cors({
 app.use(express.json());
 
 // Routes
-app.use('/api', configRoutes);
+app.use('/api', (req, res, next) => {
+  const allowedOrigins = [process.env.FRONTEND_URL, 'http://localhost:3000'];
+  if (!allowedOrigins.includes(req.get('origin'))) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+}, configRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
