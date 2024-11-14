@@ -1,52 +1,17 @@
 {
-  "name": "file-share",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.689.0",
-    "@aws-sdk/s3-request-presigner": "^3.689.0",
-    "@headlessui/react": "^2.2.0",
-    "@heroicons/react": "^2.1.5",
-    "@shadcn/ui": "^0.0.4",
-    "@supabase/supabase-js": "^2.46.1",
-    "@tailwindcss/forms": "^0.5.9",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "firebase": "^11.0.1",
-    "framer-motion": "^11.11.13",
-    "lucide-react": "^0.456.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.28.0",
-    "react-scripts": "5.0.1",
-    "tailwindcss": "^3.4.14",
-    "web-vitals": "^2.1.4"
-  },
+  "name": "freeshare",
+  "version": "1.0.0",
+  "description": "File sharing application",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "build:css": "tailwindcss -i src/styles/globals.css -o src/styles/output.css --watch"
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "frontend": "cd frontend && npm start",
+    "backend": "cd backend && npm run dev",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build": "npm run build:frontend && npm run build:backend"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "devDependencies": {
+    "concurrently": "^8.0.1"
   }
 }
