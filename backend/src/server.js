@@ -27,6 +27,7 @@ app.use(cors({
 // Body parser
 app.use(express.json());
 
+
 // Routes
 app.use('/api', (req, res, next) => {
   const allowedOrigins = [process.env.FRONTEND_URL, 'http://localhost:3000'];
