@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Lock } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 
 const PinLogin = ({ onSuccess }) => {
   const [pin, setPin] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
-  const correctPin = process.env.REACT_APP_STATS_PIN || '1234'; // Default PIN: 1234
+  // const correctPin = process.env.REACT_APP_STATS_PIN || '1234'; // Default PIN: 1234
 
   const handlePinChange = (index, value) => {
     if (isNaN(value)) return;
@@ -30,8 +31,16 @@ const PinLogin = ({ onSuccess }) => {
     setIsLoading(true);
     
     try {
-      // Validate PIN
-      if (enteredPin === correctPin) {
+      const response = await fetch(`${API_BASE_URL}/verify-stats-pin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: enteredPin })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        localStorage.setItem('statsToken', data.token);
         localStorage.setItem('statsAuth', Date.now().toString());
         onSuccess();
         toast.success('Access granted');

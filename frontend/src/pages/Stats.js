@@ -2,39 +2,71 @@ import React, { useState, useEffect } from 'react';
 import { HardDrive, FileText } from 'lucide-react';
 import { getSupabase, initSupabase } from '../config/supabase';
 import toast from 'react-hot-toast';
+import { API_BASE_URL } from '../config/api';
+
 
 const Stats = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        await initSupabase();
-        const supabaseClient = getSupabase();
+  // useEffect(() => {
+  //   const fetchStats = async () => {
+  //     try {
+  //       await initSupabase();
+  //       const supabaseClient = getSupabase();
         
-        const { data, error } = await supabaseClient
-          .from('files')
-          .select('*')
-          .order('created_at', { ascending: false });
+  //       const { data, error } = await supabaseClient
+  //         .from('files')
+  //         .select('*')
+  //         .order('created_at', { ascending: false });
 
-        if (error) throw error;
+  //       if (error) throw error;
 
-        setStats({
-          totalFiles: data.length,
-          recentFiles: data.slice(0, 5),
-          totalSize: data.reduce((acc, file) => acc + file.file_size, 0)
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        toast.error('Failed to load statistics');
-      } finally {
-        setLoading(false);
-      }
-    };
+  //       setStats({
+  //         totalFiles: data.length,
+  //         recentFiles: data.slice(0, 5),
+  //         totalSize: data.reduce((acc, file) => acc + file.file_size, 0)
+  //       });
+  //     } catch (error) {
+  //       console.error('Error fetching stats:', error);
+  //       toast.error('Failed to load statistics');
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchStats();
-  }, []);
+  //   fetchStats();
+  // }, []);
+
+  // frontend/src/pages/Stats.js
+// frontend/src/pages/Stats.js
+useEffect(() => {
+  const fetchStats = async () => {
+    try {
+      const token = localStorage.getItem('statsToken');
+      console.log('Using token:', token);
+      
+      const response = await fetch(`${API_BASE_URL}/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Received data:', data);
+      
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      toast.error('Failed to load statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchStats();
+}, []);
 
   if (loading) {
     return (

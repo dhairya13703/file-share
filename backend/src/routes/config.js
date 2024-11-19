@@ -80,4 +80,68 @@ router.get('/s3-config', authMiddleware, (req, res) => {
   }
 });
 
+// Add this to routes/config.js
+// PIN verification endpoint
+router.post('/verify-stats-pin', (req, res) => {
+  try {
+    const { pin } = req.body;
+    
+    if (!process.env.STATS_PIN) {
+      console.error('STATS_PIN not set in environment');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    if (pin !== process.env.STATS_PIN) {
+      console.error('Invalid PIN provided');
+      return res.status(401).json({ error: 'Invalid PIN' });
+    }
+
+    // Generate special token for stats access
+    const token = jwt.sign(
+      { app: 'freeshare', role: 'stats' },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    console.log('Stats auth successful, token generated');
+    res.json({ success: true, token });
+  } catch (error) {
+    console.error('Stats auth error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+// Add stats endpoint
+// In your backend stats endpoint
+router.get('/stats', authMiddleware, async (req, res) => {
+  try {    
+    // Your Supabase client initialization
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY
+    );
+
+    const { data, error } = await supabase
+      .from('files')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
+    const stats = {
+      totalFiles: data.length,
+      recentFiles: data.slice(0, 5),
+      totalSize: data.reduce((acc, file) => acc + file.file_size, 0)
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
 module.exports = router;
