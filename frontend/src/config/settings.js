@@ -4,7 +4,7 @@ export const FILE_SETTINGS = {
   EXPIRY_DAYS: 7,
   
   // Maximum file size in bytes (100MB)
-  MAX_FILE_SIZE: 100 * 1024 * 1024,
+  MAX_FILE_SIZE: 1000 * 1024 * 1024,
   
   // Valid file types (empty array means all types allowed)
   ALLOWED_FILE_TYPES: [],
