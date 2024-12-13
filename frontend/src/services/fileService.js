@@ -101,7 +101,7 @@ export const uploadFile = async (file, shareCode, password = null, onProgress) =
         file_path: s3Key,
         file_size: file.size,
         file_type: file.type,
-        public_url: downloadUrl,
+        s3_url: `s3://${s3Config.bucketName}/${s3Key}`,
         expires_at: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString(),
         is_password_protected: !!password,
         password_hash: passwordHash,
