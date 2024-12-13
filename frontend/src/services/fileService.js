@@ -3,6 +3,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getSupabase, initSupabase } from '../config/supabase';
 import { getConfig } from './configService';
 import { getS3Client } from '../config/aws';
+import { generateEncryptionKey, encryptFile, decryptFile, hashPassword, verifyPassword } from '../utils/encryption';
+import toast from 'react-hot-toast';
 
 let initialized = false;
 let s3Config = null;
@@ -28,7 +30,7 @@ const ensureInitialized = async () => {
   }
 };
 
-export const uploadFile = async (file, shareCode, onProgress) => {
+export const uploadFile = async (file, shareCode, password = null, onProgress) => {
   let s3Key = null;
   
   try {
@@ -40,7 +42,8 @@ export const uploadFile = async (file, shareCode, onProgress) => {
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
-      shareCode
+      shareCode,
+      isPasswordProtected: !!password
     });
 
     if (!s3Config?.bucketName) {
@@ -51,15 +54,27 @@ export const uploadFile = async (file, shareCode, onProgress) => {
     s3Key = `files/${shareCode}/${Date.now()}_${file.name}`;
     console.log('Generated S3 key:', s3Key);
 
+    // Handle encryption if password is provided
+    let fileToUpload = file;
+    let encryptionKey = null;
+    let passwordHash = null;
+
+    if (password) {
+      encryptionKey = generateEncryptionKey();
+      passwordHash = hashPassword(password);
+      fileToUpload = await encryptFile(file, encryptionKey);
+    }
+
     // Upload to S3
     const uploadCommand = new PutObjectCommand({
       Bucket: s3Config.bucketName,
       Key: s3Key,
-      Body: file,
-      ContentType: file.type,
+      Body: fileToUpload,
+      ContentType: password ? 'application/encrypted' : file.type,
       Metadata: {
         'share-code': shareCode,
-        'original-name': file.name
+        'original-name': file.name,
+        'original-type': file.type
       }
     });
 
@@ -90,6 +105,9 @@ export const uploadFile = async (file, shareCode, onProgress) => {
         file_type: file.type,
         s3_url: downloadUrl,
         expires_at: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString(),
+        is_password_protected: !!password,
+        password_hash: passwordHash,
+        encryption_key: encryptionKey
       }])
       .select()
       .single();
@@ -132,7 +150,7 @@ export const uploadFile = async (file, shareCode, onProgress) => {
   }
 };
 
-export const getFileByCode = async (shareCode) => {
+export const getFileByCode = async (shareCode, password = null) => {
   try {
     await ensureInitialized();
     const supabaseClient = getSupabase();
@@ -155,6 +173,16 @@ export const getFileByCode = async (shareCode) => {
       throw new Error('File has expired');
     }
 
+    // Verify password if file is password protected
+    if (fileData.is_password_protected) {
+      if (!password) {
+        throw new Error('This file is password protected. Please provide a password.');
+      }
+      if (!verifyPassword(password, fileData.password_hash)) {
+        throw new Error('Incorrect password');
+      }
+    }
+
     // Generate fresh download URL
     const getCommand = new GetObjectCommand({
       Bucket: s3Config.bucketName,
@@ -171,6 +199,56 @@ export const getFileByCode = async (shareCode) => {
     };
   } catch (error) {
     console.error('Get file error:', error);
+    throw error;
+  }
+};
+
+export const downloadFile = async (fileData, password = null) => {
+  try {
+    await ensureInitialized();
+    const supabaseClient = getSupabase();
+
+    if (new Date(fileData.expires_at) < new Date()) {
+      throw new Error('File has expired');
+    }
+
+    // Verify password if file is password protected
+    if (fileData.is_password_protected) {
+      if (!password) {
+        throw new Error('This file is password protected. Please provide a password.');
+      }
+      if (!verifyPassword(password, fileData.password_hash)) {
+        throw new Error('Incorrect password');
+      }
+    }
+
+    const response = await fetch(fileData.download_url);
+    if (!response.ok) throw new Error('Download failed');
+
+    let blob = await response.blob();
+
+    // Decrypt file if it's password protected
+    if (fileData.is_password_protected) {
+      blob = await decryptFile(blob, fileData.encryption_key, fileData.file_type);
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileData.file_name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    // Update download count
+    await supabaseClient
+      .from('files')
+      .update({ downloads_count: (fileData.downloads_count || 0) + 1 })
+      .eq('share_code', fileData.share_code);
+
+  } catch (error) {
+    console.error('Download error:', error);
     throw error;
   }
 };
@@ -198,41 +276,6 @@ const deleteFile = async (filePath, shareCode) => {
     if (dbError) throw dbError;
   } catch (error) {
     console.error('Delete error:', error);
-    throw error;
-  }
-};
-
-export const downloadFile = async (fileData) => {
-  try {
-    await ensureInitialized();
-    const supabaseClient = getSupabase();
-
-    if (new Date(fileData.expires_at) < new Date()) {
-      throw new Error('File has expired');
-    }
-
-    const response = await fetch(fileData.download_url);
-    if (!response.ok) throw new Error('Download failed');
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileData.file_name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-
-    // Update download count
-    await supabaseClient
-      .from('files')
-      .update({ downloads_count: (fileData.downloads_count || 0) + 1 })
-      .eq('share_code', fileData.share_code);
-
-  } catch (error) {
-    console.error('Download error:', error);
     throw error;
   }
 };

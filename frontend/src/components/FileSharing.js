@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Download, Copy, CheckCircle, AlertCircle, FileText, X } from 'lucide-react';
+import { Upload, Download, Copy, CheckCircle, AlertCircle, FileText, X, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { uploadFile, getFileByCode, downloadFile } from '../services/fileService';
 import toast from 'react-hot-toast';
@@ -11,6 +11,8 @@ const FileSharing = () => {
   const [downloading, setDownloading] = useState(false);
   const [shareCode, setShareCode] = useState('');
   const [downloadCode, setDownloadCode] = useState('');
+  const [uploadPassword, setUploadPassword] = useState('');
+  const [downloadPassword, setDownloadPassword] = useState('');
   const [copied, setCopied] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
@@ -55,7 +57,7 @@ const FileSharing = () => {
 
     try {
       const code = Math.floor(10000 + Math.random() * 90000).toString();
-      await uploadFile(selectedFile, code, (progress) => {
+      await uploadFile(selectedFile, code, uploadPassword || null, (progress) => {
         setUploadProgress(progress);
       });
       setShareCode(code);
@@ -76,11 +78,12 @@ const FileSharing = () => {
     setDownloading(true);
 
     try {
-      const fileData = await getFileByCode(downloadCode);
-      await downloadFile(fileData);
+      const fileData = await getFileByCode(downloadCode, downloadPassword || null);
+      await downloadFile(fileData, downloadPassword || null);
       
       toast.success('Download started!');
       setDownloadCode('');
+      setDownloadPassword('');
     } catch (error) {
       console.error('Download error:', error);
       toast.error(error.message || 'Error downloading file. Please check the code and try again.');
@@ -108,6 +111,24 @@ const FileSharing = () => {
         {/* Upload Section */}
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h2 className="text-2xl font-semibold mb-6">Upload File</h2>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password Protection (Optional)
+            </label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="password"
+                value={uploadPassword}
+                onChange={(e) => setUploadPassword(e.target.value)}
+                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                placeholder="Enter password to protect the file"
+              />
+            </div>
+          </div>
           
           <div
             onDragEnter={handleDrag}
@@ -159,15 +180,15 @@ const FileSharing = () => {
               </div>
 
               {uploading && (
-                <div className="mt-3">
+                <div className="mt-4">
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500 transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1 text-center">
-                    {uploadProgress}% uploaded
+                  <p className="text-sm text-gray-500 mt-1">
+                    Uploading... {Math.round(uploadProgress)}%
                   </p>
                 </div>
               )}
@@ -175,15 +196,15 @@ const FileSharing = () => {
           )}
 
           {shareCode && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700 mb-2">Share this code:</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-2xl font-mono text-blue-900 bg-white px-4 py-2 rounded">
-                  {shareCode}
-                </code>
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Share Code:</p>
+                  <p className="text-2xl font-bold text-blue-900">{shareCode}</p>
+                </div>
                 <button
                   onClick={copyToClipboard}
-                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-blue-100 rounded-full transition-colors"
                 >
                   {copied ? (
                     <CheckCircle className="w-6 h-6 text-green-500" />
@@ -192,9 +213,6 @@ const FileSharing = () => {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-blue-600 mt-2">
-                This code will expire in 7 days
-              </p>
             </div>
           )}
         </div>
@@ -204,31 +222,56 @@ const FileSharing = () => {
           <h2 className="text-2xl font-semibold mb-6">Download File</h2>
           
           <div className="space-y-4">
-            <div className="relative">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Share Code
+              </label>
               <input
                 type="text"
-                maxLength="5"
-                placeholder="Enter 5-digit code"
                 value={downloadCode}
-                onChange={(e) => setDownloadCode(e.target.value.replace(/\D/g, ''))}
-                className="w-full px-4 py-3 text-lg font-mono rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                disabled={downloading}
+                onChange={(e) => setDownloadCode(e.target.value)}
+                placeholder="Enter 5-digit code"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                maxLength={5}
               />
-              
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={handleDownload}
-                  disabled={downloading || downloadCode.length !== 5}
-                  className="w-full bg-blue-500 text-white px-6 py-3 rounded-lg font-medium
-                    hover:bg-blue-600 focus:ring-4 focus:ring-blue-200 transition-all
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                    flex items-center justify-center gap-2"
-                >
-                  <Download className="w-5 h-5" />
-                  {downloading ? 'Downloading...' : 'Download File'}
-                </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password (if required)
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  value={downloadPassword}
+                  onChange={(e) => setDownloadPassword(e.target.value)}
+                  className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                  placeholder="Enter password if file is protected"
+                />
               </div>
             </div>
+
+            <button
+              onClick={handleDownload}
+              disabled={downloading || downloadCode.length !== 5}
+              className={`w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                ${(downloading || downloadCode.length !== 5) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {downloading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="w-5 h-5 mr-2" />
+                  Download File
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
