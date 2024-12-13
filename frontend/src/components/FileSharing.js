@@ -50,14 +50,16 @@ const FileSharing = () => {
       showAlert('error', 'File size must be less than 1000MB');
       return;
     }
-
     setFile(selectedFile);
+  };
+
+  const handleUpload = async () => {
     setUploading(true);
     setUploadProgress(0);
 
     try {
       const code = Math.floor(10000 + Math.random() * 90000).toString();
-      await uploadFile(selectedFile, code, uploadPassword || null, (progress) => {
+      await uploadFile(file, code, uploadPassword || null, (progress) => {
         setUploadProgress(progress);
       });
       setShareCode(code);
@@ -112,24 +114,6 @@ const FileSharing = () => {
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h2 className="text-2xl font-semibold mb-6">Upload File</h2>
           
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password Protection (Optional)
-            </label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="password"
-                value={uploadPassword}
-                onChange={(e) => setUploadPassword(e.target.value)}
-                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
-                placeholder="Enter password to protect the file"
-              />
-            </div>
-          </div>
-          
           <div
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -160,23 +144,64 @@ const FileSharing = () => {
           </div>
 
           {file && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg relative">
-              <button
-                onClick={clearFile}
-                className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full"
-              >
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-              <div className="flex items-center gap-3">
-                <FileText className="w-8 h-8 text-blue-500" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {(file.size / (1024 * 1024)).toFixed(2)} MB
-                  </p>
+            <div className="mt-4 space-y-4">
+              <div className="p-4 bg-gray-50 rounded-lg relative">
+                <button
+                  onClick={clearFile}
+                  className="absolute top-2 right-2 p-1 hover:bg-gray-200 rounded-full"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+                <div className="flex items-center gap-3">
+                  <FileText className="w-8 h-8 text-blue-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(file.size / (1024 * 1024)).toFixed(2)} MB
+                    </p>
+                  </div>
                 </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Password Protection (Optional)
+                  </label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="password"
+                      value={uploadPassword}
+                      onChange={(e) => setUploadPassword(e.target.value)}
+                      className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                      placeholder="Enter password to protect the file"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading}
+                  className={`w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                    ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 mr-2" />
+                      Upload File {uploadPassword && '(Password Protected)'}
+                    </>
+                  )}
+                </button>
               </div>
 
               {uploading && (
@@ -201,6 +226,11 @@ const FileSharing = () => {
                 <div>
                   <p className="text-sm font-medium text-blue-800">Share Code:</p>
                   <p className="text-2xl font-bold text-blue-900">{shareCode}</p>
+                  {uploadPassword && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      This file is password protected
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={copyToClipboard}
