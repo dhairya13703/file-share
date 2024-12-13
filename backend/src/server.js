@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const configRoutes = require('./routes/config');
+const statsRoutes = require('./routes/stats');
 
 const app = express();
 
@@ -36,6 +37,8 @@ app.use('/api', (req, res, next) => {
   }
   next();
 }, configRoutes);
+
+app.use('/api/stats', statsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
