@@ -1,32 +1,24 @@
 import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { getSupabase, initSupabase } from '../config/supabase';
+import { getSupabase } from '../config/supabase';
 import { getConfig } from './configService';
 import { getS3Client } from '../config/aws';
 import { generateEncryptionKey, encryptFile, decryptFile, hashPassword, verifyPassword } from '../utils/encryption';
+import { getCurrentUser } from './authService';
 import toast from 'react-hot-toast';
 
 let initialized = false;
 let s3Config = null;
 
 const ensureInitialized = async () => {
+  if (initialized) return;
+
   try {
-    if (!initialized) {
-      await initSupabase();
-      const config = await getConfig();
-      s3Config = {
-        bucketName: config.bucketName,
-        region: config.region
-      };
-      initialized = true;
-      console.log('Initialization complete:', { 
-        hasSupabase: !!getSupabase(), 
-        hasS3Config: !!s3Config 
-      });
-    }
+    s3Config = await getConfig();
+    initialized = true;
   } catch (error) {
-    console.error('Initialization failed:', error);
-    throw error;
+    console.error('Failed to initialize:', error);
+    throw new Error('Failed to initialize file service');
   }
 };
 
@@ -37,6 +29,11 @@ export const uploadFile = async (file, shareCode, password = null, onProgress) =
     await ensureInitialized();
     const supabaseClient = getSupabase();
     const s3Client = await getS3Client();
+    const user = await getCurrentUser();
+
+    if (!user) {
+      throw new Error('You must be logged in to upload files');
+    }
 
     console.log('Starting upload process:', {
       fileName: file.name,
@@ -98,12 +95,13 @@ export const uploadFile = async (file, shareCode, password = null, onProgress) =
     const { data: fileData, error: dbError } = await supabaseClient
       .from('files')
       .insert([{
+        user_id: user.id,
         share_code: shareCode,
         file_name: file.name,
         file_path: s3Key,
         file_size: file.size,
         file_type: file.type,
-        s3_url: downloadUrl,
+        public_url: downloadUrl,
         expires_at: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString(),
         is_password_protected: !!password,
         password_hash: passwordHash,
