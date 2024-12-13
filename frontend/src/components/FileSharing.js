@@ -134,7 +134,7 @@ const FileSharing = () => {
                 {dragActive ? 'Drop your file here' : 'Drag & drop your file here'}
               </p>
               <p className="text-gray-500 text-sm">or click to browse</p>
-              <p className="text-gray-400 text-xs mt-2">Max file size: 100MB</p>
+              <p className="text-gray-400 text-xs mt-2">Max file size: 1000MB</p>
             </label>
           </div>
 
