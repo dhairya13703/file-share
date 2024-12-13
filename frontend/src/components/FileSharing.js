@@ -44,8 +44,8 @@ const FileSharing = () => {
   };
 
   const handleFileSelection = async (selectedFile) => {
-    if (selectedFile.size > 100 * 1024 * 1024) {
-      showAlert('error', 'File size must be less than 100MB');
+    if (selectedFile.size > 1000 * 1024 * 1024) {
+      showAlert('error', 'File size must be less than 1000MB');
       return;
     }
 
